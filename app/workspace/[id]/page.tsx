@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import GraphView from "./GraphView";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -6,37 +7,22 @@ type Props = {
 
 export default async function WorkspacePage({ params }: Props) {
 
-  const { id: workspaceId } = await params;   // ← THIS is the correct way
+  const { id } = await params;
 
   const { data: entities } = await supabase
     .from("entities")
     .select("*")
-    .eq("workspace_id", workspaceId);
+    .eq("workspace_id", id);
 
   const { data: relationships } = await supabase
     .from("relationships")
     .select("*")
-    .eq("workspace_id", workspaceId);
+    .eq("workspace_id", id);
 
   return (
-    <main className="p-8">
-
-      <h1 className="text-xl font-semibold mb-6">
-        Workspace {workspaceId}
-      </h1>
-
-      <h2 className="font-medium mt-6">Entities</h2>
-
-      <pre className="mt-2 bg-gray-100 p-4 rounded overflow-auto text-xs">
-        {JSON.stringify(entities, null, 2)}
-      </pre>
-
-      <h2 className="font-medium mt-6">Relationships</h2>
-
-      <pre className="mt-2 bg-gray-100 p-4 rounded overflow-auto text-xs">
-        {JSON.stringify(relationships, null, 2)}
-      </pre>
-
-    </main>
+    <GraphView
+      entities={entities || []}
+      relationships={relationships || []}
+    />
   );
 }

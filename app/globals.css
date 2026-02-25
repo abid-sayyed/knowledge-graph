@@ -26,3 +26,11 @@ body {
 main {
   color: #111827;
 }
+
+.react-flow {
+  background: white;
+}
+
+.react-flow__node {
+  color: #111827;
+}
