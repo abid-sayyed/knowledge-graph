@@ -1,0 +1,25 @@
+Meeting Notes — Enterprise AI Strategy
+
+Date: July 14, 2023
+
+Participants included:
+
+Elon Musk from Tesla
+Satya Nadella representing Microsoft
+Sundar Pichai from Google
+Sam Altman from OpenAI
+
+The meeting discussed a shared research platform called UnifiedAI Hub.
+
+UnifiedAI Hub aims to connect Tesla autonomous driving datasets with Microsoft analytics pipelines and Google AI services.
+
+Key planned features:
+
+* centralized training orchestration
+* distributed model versioning
+* autonomous dataset labeling
+* secure API federation
+
+Deployment timeline expected January 2024.
+
+Funding discussions to continue September 2023.

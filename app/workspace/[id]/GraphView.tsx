@@ -11,15 +11,15 @@ import {
   Node,
   Edge,
   BackgroundVariant,
-  NodeProps,
-  Handle,
-  Position,
   useNodesState,
   useEdgesState,
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
+
+import CustomNode from "./CustomNode";
+import Link from "next/link";
 
 type Entity = {
   id: string;
@@ -35,37 +35,10 @@ type Relationship = {
   snippet?: string;
 };
 
-type NodeData = {
-  label: string;
-};
-type CustomNodeType = Node<NodeData>;
-
 type Props = {
   entities: Entity[];
   relationships: Relationship[];
 };
-
-// ---------- CUSTOM NODE COMPONENT ----------
-function CustomNode({ data, selected }: NodeProps<CustomNodeType>) {
-  return (
-    <div
-      className={`px-4 py-2 rounded-lg shadow-md border-2 transition-all ${
-        selected
-          ? "border-blue-500 shadow-lg"
-          : "border-gray-300 hover:border-gray-400"
-      }`}
-      style={{
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        color: "#ffffff",
-        minWidth: "180px",
-      }}
-    >
-      <Handle type="target" position={Position.Left} className="w-3 h-3" />
-      <div className="font-medium text-center">{data.label}</div>
-      <Handle type="source" position={Position.Right} className="w-3 h-3" />
-    </div>
-  );
-}
 
 const nodeTypes = {
   custom: CustomNode,
@@ -103,6 +76,9 @@ function layout(nodes: Node[], edges: Edge[]) {
 export default function GraphView({ entities, relationships }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [localEntities, setLocalEntities] = useState<Entity[]>(entities);
+  const [localRelationships, setLocalRelationships] =
+    useState<Relationship[]>(relationships);
+
   const [search, setSearch] = useState("");
 
   // ---------- SEARCH ----------
@@ -199,16 +175,15 @@ export default function GraphView({ entities, relationships }: Props) {
   // ---------- SIDEBAR ----------
   const selectedEntity = localEntities.find((e) => e.id === selected);
 
-  const connected = relationships.filter(
+  const connected = localRelationships.filter(
     (r) => r.from_entity === selected || r.to_entity === selected,
   );
 
   const connectedIds = new Set(
-  connected.map((r) =>
-    r.from_entity === selected ? r.to_entity : r.from_entity
-  )
-);
-
+    connected.map((r) =>
+      r.from_entity === selected ? r.to_entity : r.from_entity,
+    ),
+  );
 
   // ---------- FOR EDIT NODE ----------
 
@@ -264,10 +239,12 @@ export default function GraphView({ entities, relationships }: Props) {
     const created = await res.json();
 
     if (created?.data) {
+      const newRelations: Relationship[] = created.data;
+
+      // update edges
       setEdges((prev) => [
         ...prev,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...created.data.map((r: any) => ({
+        ...newRelations.map((r) => ({
           id: r.id,
           source: r.from_entity,
           target: r.to_entity,
@@ -277,8 +254,10 @@ export default function GraphView({ entities, relationships }: Props) {
           style: { stroke: "#94a3b8", strokeWidth: 2 },
         })),
       ]);
-    }
 
+      // update sidebar relationships
+      setLocalRelationships((prev) => [...prev, ...newRelations]);
+    }
     setShowAddConnection(false);
     setConnectionType("");
     setSelectedTargets([]);
@@ -297,7 +276,6 @@ export default function GraphView({ entities, relationships }: Props) {
                 Knowledge Graph
               </h1>
             </div>
-
             {/* SEARCH */}
             <div className="flex-1 max-w-md">
               <div className="relative">
@@ -322,13 +300,78 @@ export default function GraphView({ entities, relationships }: Props) {
                 />
               </div>
             </div>
-
             <div className="flex items-center gap-2 text-slate-300 text-sm">
               <span className="font-medium">{localEntities.length}</span>
               <span>entities</span>
               <span className="mx-2">•</span>
               <span className="font-medium">{relationships.length}</span>
               <span>connections</span>
+            </div>
+
+            {/* Spacer to push menu to the right */}
+            <div className="flex-1"></div>
+
+            {/* MENU LIST */}
+            <div className="flex items-center gap-2 border-l border-slate-600 pl-4">
+              <Link
+                href="/"
+                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                <span>Upload</span>
+              </Link>
+
+              <Link
+                href="/workspace"
+                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+                <span>Work Space</span>
+              </Link>
+
+              <Link
+                href="/system-health"
+                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>System Health</span>
+              </Link>
             </div>
           </div>
         </div>
@@ -579,10 +622,10 @@ export default function GraphView({ entities, relationships }: Props) {
                 </div>
               )}
             </div>
-
-            {connected.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
+            <div>
+              {/* HEADER WITH BUTTON ALWAYS */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
                   <svg
                     className="w-5 h-5 text-slate-600"
                     fill="none"
@@ -596,20 +639,23 @@ export default function GraphView({ entities, relationships }: Props) {
                       d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                     />
                   </svg>
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-slate-700 pr-4">
-                      Connections ({connected.length})
-                    </h4>
 
-                    <button
-                      onClick={() => setShowAddConnection(true)}
-                      className="text-xs px-3 py-1 bg-slate-800 text-white rounded-md hover:bg-slate-700"
-                    >
-                      + Add Connection
-                    </button>
-                  </div>
+                  <h4 className="font-semibold text-slate-700">
+                    Connections ({connected.length})
+                  </h4>
                 </div>
 
+                {/* ⭐ BUTTON ALWAYS SHOWN */}
+                <button
+                  onClick={() => setShowAddConnection(true)}
+                  className="text-xs px-3 py-1 bg-slate-800 text-white rounded-md hover:bg-slate-700"
+                >
+                  + Add Connection
+                </button>
+              </div>
+
+              {/* CONNECTIONS LIST */}
+              {connected.length > 0 ? (
                 <div className="space-y-3">
                   {connected.map((r) => {
                     const otherId =
@@ -620,22 +666,25 @@ export default function GraphView({ entities, relationships }: Props) {
                     return (
                       <div
                         key={r.id}
-                        className="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer"
+                        className="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:border-slate-300 cursor-pointer"
                         onClick={() => setSelected(otherId)}
                       >
                         <div className="flex items-start gap-3">
                           <span className="text-slate-400 text-lg">
                             {direction}
                           </span>
+
                           <div className="flex-1">
                             <div className="font-medium text-slate-800 mb-1">
                               {other?.name}
                             </div>
+
                             <div className="text-xs text-purple-600 font-medium mb-2">
                               {r.type}
                             </div>
+
                             {r.snippet && (
-                              <div className="text-sm text-slate-600 leading-relaxed">
+                              <div className="text-sm text-slate-600">
                                 {r.snippet}
                               </div>
                             )}
@@ -645,27 +694,12 @@ export default function GraphView({ entities, relationships }: Props) {
                     );
                   })}
                 </div>
-              </div>
-            )}
-
-            {connected.length === 0 && (
-              <div className="text-center py-8 text-slate-500">
-                <svg
-                  className="w-12 h-12 mx-auto mb-3 text-slate-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-                <p>No connections found</p>
-              </div>
-            )}
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  No connections yet — add one!
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

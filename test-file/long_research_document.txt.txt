@@ -1,0 +1,30 @@
+Artificial Intelligence Collaboration Study
+
+Between 2021 and 2024, multiple technology companies collaborated on AI research infrastructure.
+
+Google, also referred to as Google Inc., invested heavily in distributed compute frameworks.
+
+Microsoft Corporation focused on enterprise cloud integration, especially through Azure AI Services.
+
+OpenAI worked on advanced language models and deployment pipelines.
+
+Sam Altman, Sundar Pichai, and Satya Nadella held several strategy meetings between May 2022 and December 2023.
+
+One initiative, named GlobalModel Exchange, aimed to share pretrained models across organizations.
+
+The GlobalModel Exchange platform included:
+
+* federated authentication
+* encrypted model transfer
+* shared evaluation metrics
+* automated compliance reporting
+
+Tesla, led by Elon Musk, joined the initiative in November 2023.
+
+The system was tested in January 2024 and scheduled for production release in May 2024.
+
+Later documentation referenced Google using the alias GOOGLE internally.
+
+Microsoft Corporation was sometimes written simply as Microsoft.
+
+OpenAI research teams contributed additional dataset curation tools.
