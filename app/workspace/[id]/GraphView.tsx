@@ -102,16 +102,17 @@ function layout(nodes: Node[], edges: Edge[]) {
 
 export default function GraphView({ entities, relationships }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [localEntities, setLocalEntities] = useState<Entity[]>(entities);
   const [search, setSearch] = useState("");
 
   // ---------- SEARCH ----------
   const visibleEntities = useMemo(() => {
-    if (!search) return entities;
+    if (!search) return localEntities;
 
-    return entities.filter((e) =>
+    return localEntities.filter((e) =>
       e.name.toLowerCase().includes(search.toLowerCase()),
     );
-  }, [search, entities]);
+  }, [search, localEntities]);
 
   // ---------- BUILD INITIAL NODES ----------
   const initialNodes: Node[] = useMemo(
@@ -158,6 +159,11 @@ export default function GraphView({ entities, relationships }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
+  //edit state
+  const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+
   // Update nodes when layout changes
   useEffect(() => {
     setNodes(layoutedNodes);
@@ -165,18 +171,67 @@ export default function GraphView({ entities, relationships }: Props) {
   }, [layoutedNodes, initialEdges, setNodes, setEdges]);
 
   // ---------- HANDLE NODE CLICK ----------
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    setSelected(node.id);
-  }, []);
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      const entity = localEntities.find((e) => e.id === node.id);
+
+      if (!entity) return;
+
+      setSelected(node.id);
+
+      // ⭐ initialize edit values HERE instead of useEffect
+      setEditName(entity.name);
+      setEditType(entity.type || "");
+      setIsEditing(false);
+    },
+    [localEntities],
+  );
+
   // ---------- SIDEBAR ----------
-  const selectedEntity = entities.find((e) => e.id === selected);
+  const selectedEntity = localEntities.find((e) => e.id === selected);
 
   const connected = relationships.filter(
     (r) => r.from_entity === selected || r.to_entity === selected,
   );
 
+  // ---------- FOR EDIT NODE ----------
+
+  function updateVisualNode(id: string, newName: string) {
+    setNodes((nodes) =>
+      nodes.map((n) =>
+        n.id === id ? { ...n, data: { ...n.data, label: newName } } : n,
+      ),
+    );
+  }
+
+  async function saveEntity() {
+    if (!selected) return;
+
+    await fetch("/api/entity-update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: selected,
+        name: editName,
+        type: editType,
+      }),
+    });
+
+    // update graph node
+    updateVisualNode(selected, editName);
+
+    // ⭐ update sidebar data too
+    setLocalEntities((prev) =>
+      prev.map((e) =>
+        e.id === selected ? { ...e, name: editName, type: editType } : e,
+      ),
+    );
+
+    setIsEditing(false);
+  }
+
   return (
-    <div className="flex h-[92vh] bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="flex h-[92vh] bg-linear-to-br from-slate-50 to-slate-100">
       {/* GRAPH */}
       <div className="flex-1 flex flex-col">
         {/* TOP BAR */}
@@ -215,7 +270,7 @@ export default function GraphView({ entities, relationships }: Props) {
             </div>
 
             <div className="flex items-center gap-2 text-slate-300 text-sm">
-              <span className="font-medium">{entities.length}</span>
+              <span className="font-medium">{localEntities.length}</span>
               <span>entities</span>
               <span className="mx-2">•</span>
               <span className="font-medium">{relationships.length}</span>
@@ -290,13 +345,124 @@ export default function GraphView({ entities, relationships }: Props) {
 
           {/* SIDEBAR CONTENT */}
           <div className="flex-1 overflow-auto p-6">
-            <div className="mb-6">
-              <div className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium mb-3">
-                {selectedEntity.type || "Unknown Type"}
+            <div className="mb-6 space-y-3">
+              {/* TYPE */}
+              <div className="flex items-center gap-2">
+                {isEditing ? (
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-slate-500 mb-1">
+                      Type
+                    </div>
+                    <input
+                      value={editType}
+                      onChange={(e) => setEditType(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter type"
+                    />
+                  </div>
+                ) : (
+                  <div className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                    {selectedEntity.type || "Unknown Type"}
+                  </div>
+                )}
+                {!isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-1.5 hover:bg-slate-100 rounded transition-colors"
+                    aria-label="Edit"
+                  >
+                    <svg
+                      className="w-4 h-4 text-slate-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                  </button>
+                )}
               </div>
-              <h3 className="text-2xl font-bold text-slate-800">
-                {selectedEntity.name}
-              </h3>
+
+              {/* NAME */}
+              <div className="flex items-center gap-2">
+                {isEditing ? (
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-slate-500 mb-1">
+                      Name
+                    </div>
+                    <input
+                      value={editName}
+                      onChange={(e) => {
+                        setEditName(e.target.value);
+                        updateVisualNode(selected!, e.target.value);
+                      }}
+                      className="w-full font-semibold border border-slate-300 px-3 py-1.5 rounded-lg text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter name"
+                    />
+                  </div>
+                ) : (
+                  <h3 className="text-2xl font-bold text-slate-800">
+                    {selectedEntity.name}
+                  </h3>
+                )}
+                {!isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-1.5 hover:bg-slate-100 rounded transition-colors"
+                    aria-label="Edit"
+                  >
+                    <svg
+                      className="w-4 h-4 text-slate-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* SAVE/CANCEL BUTTONS */}
+              {isEditing && (
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={saveEntity}
+                    className="flex-1 bg-gradient-to-r from-slate-800 to-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors border border-slate-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
 
             {connected.length > 0 && (
@@ -324,7 +490,7 @@ export default function GraphView({ entities, relationships }: Props) {
                   {connected.map((r) => {
                     const otherId =
                       r.from_entity === selected ? r.to_entity : r.from_entity;
-                    const other = entities.find((e) => e.id === otherId);
+                    const other = localEntities.find((e) => e.id === otherId);
                     const direction = r.from_entity === selected ? "→" : "←";
 
                     return (

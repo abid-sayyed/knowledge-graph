@@ -17,7 +17,6 @@ const ai = new GoogleGenAI({ apiKey });
 
 const MODEL = "gemini-3-flash-preview";
 
-
 // ============================
 // JSON SCHEMA FOR GEMINI
 // ============================
@@ -34,11 +33,11 @@ const graphJsonSchema = {
           type: { type: "string" },
           aliases: {
             type: "array",
-            items: { type: "string" }
-          }
+            items: { type: "string" },
+          },
         },
-        required: ["name"]
-      }
+        required: ["name"],
+      },
     },
     relationships: {
       type: "array",
@@ -48,15 +47,14 @@ const graphJsonSchema = {
           from: { type: "string" },
           to: { type: "string" },
           type: { type: "string" },
-          snippet: { type: "string" }
+          snippet: { type: "string" },
         },
-        required: ["from","to"]
-      }
-    }
+        required: ["from", "to"],
+      },
+    },
   },
-  required: ["entities","relationships"]
+  required: ["entities", "relationships"],
 };
-
 
 // ============================
 // ZOD VALIDATION (BACKEND SAFETY)
@@ -80,7 +78,6 @@ const graphSchema = z.object({
   relationships: z.array(relationshipSchema),
 });
 
-
 // ============================
 // CHUNK TEXT
 // ============================
@@ -98,7 +95,6 @@ function chunkText(text: string, size = 6000, overlap = 800) {
   return chunks;
 }
 
-
 // ============================
 // NORMALIZE NAME
 // ============================
@@ -106,7 +102,6 @@ function chunkText(text: string, size = 6000, overlap = 800) {
 function normalizeName(name: string) {
   return name.trim().toLowerCase();
 }
-
 
 // ============================
 // PROMPT
@@ -129,22 +124,16 @@ ${chunk}
 `;
 }
 
-
 // ============================
 // ROUTE
 // ============================
 
 export async function POST(req: Request) {
-
   try {
-
     const { combinedText } = (await req.json()) as { combinedText: string };
 
     if (!combinedText) {
-      return NextResponse.json(
-        { error: "No text provided" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
 
     const chunks = chunkText(combinedText);
@@ -157,9 +146,7 @@ export async function POST(req: Request) {
     const relationships: RelationshipInput[] = [];
 
     for (const chunk of chunks) {
-
       const response = await ai.models.generateContent({
-
         model: MODEL,
 
         contents: buildPrompt(chunk),
@@ -168,7 +155,6 @@ export async function POST(req: Request) {
           responseMimeType: "application/json",
           responseJsonSchema: graphJsonSchema,
         },
-
       });
 
       const raw = response.text || "{}";
@@ -176,61 +162,57 @@ export async function POST(req: Request) {
       let parsed: WorkspacePayload;
 
       try {
-
         parsed = graphSchema.parse(JSON.parse(raw));
-
       } catch {
-
         console.warn("Invalid structured JSON skipped");
 
         continue;
-
       }
 
       // merge entities
       for (const e of parsed.entities ?? []) {
-
         const key = normalizeName(e.name);
 
         if (!entityMap.has(key)) {
-
           entityMap.set(key, {
             name: e.name,
             type: e.type ?? "unknown",
             aliases: new Set(e.aliases ?? []),
           });
-
         } else {
-
           entityMap.get(key)!.aliases.add(e.name);
-
         }
       }
 
       relationships.push(...(parsed.relationships ?? []));
     }
 
-
-    const entities: EntityInput[] =
-      Array.from(entityMap.values()).map(e => ({
-        name: e.name,
-        type: e.type,
-        aliases: Array.from(e.aliases),
-      }));
-
+    const entities: EntityInput[] = Array.from(entityMap.values()).map((e) => ({
+      name: e.name,
+      type: e.type,
+      aliases: Array.from(e.aliases),
+    }));
 
     return NextResponse.json({
       entities,
       relationships,
     });
-
-  } catch (err) {
-
+  } catch (err: unknown) {
     console.error("EXTRACT ERROR:", err);
 
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+          ? err
+          : JSON.stringify(err);
+
     return NextResponse.json(
-      { error: "Extraction failed" },
-      { status: 500 }
+      {
+        error: "Extraction failed",
+        apiError: message,
+      },
+      { status: 500 },
     );
   }
 }

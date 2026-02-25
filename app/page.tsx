@@ -10,7 +10,6 @@ const ALLOWED_TYPES = ["text/plain", "application/pdf"];
 const MAX_FILES = 10;
 
 export default function HomePage() {
-
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,28 +19,23 @@ export default function HomePage() {
   const [graphData, setGraphData] = useState<WorkspacePayload | null>(null);
   const router = useRouter();
 
-
   // ---------- helper ----------
   function addStep(msg: string) {
-    setSteps(prev => [...prev, msg]);
+    setSteps((prev) => [...prev, msg]);
   }
-
 
   // ---------- file validation ----------
   function validateFiles(fileList: FileList | null) {
-
     setError(null);
     setSuccess(null);
 
     if (!fileList) return;
 
-    setFiles(prev => {
-
-      const existing = new Set(prev.map(f => f.name));
+    setFiles((prev) => {
+      const existing = new Set(prev.map((f) => f.name));
       const updated = [...prev];
 
       for (const file of Array.from(fileList)) {
-
         if (!ALLOWED_TYPES.includes(file.type)) {
           setError("Only .txt and .pdf files allowed.");
           return prev;
@@ -61,12 +55,9 @@ export default function HomePage() {
     });
   }
 
-
   // ---------- upload pipeline ----------
   async function handleUpload() {
-
     try {
-
       setError(null);
       setSuccess(null);
       setSteps([]);
@@ -82,11 +73,11 @@ export default function HomePage() {
 
       // ---------- STEP 1 upload ----------
       const formData = new FormData();
-      files.forEach(f => formData.append("files", f));
+      files.forEach((f) => formData.append("files", f));
 
       const uploadRes = await fetch("/api/upload", {
         method: "POST",
-        body: formData
+        body: formData,
       });
 
       if (!uploadRes.ok) {
@@ -104,14 +95,13 @@ export default function HomePage() {
         throw new Error("No parsed text returned");
       }
 
-
       // ---------- STEP 2 extraction ----------
       addStep("Sending text to AI for entity extraction...");
 
       const extractRes = await fetch("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ combinedText })
+        body: JSON.stringify({ combinedText }),
       });
 
       if (!extractRes.ok) {
@@ -127,27 +117,23 @@ export default function HomePage() {
       addStep("Generating relationships...");
       addStep("Preparing workspace...");
 
-
       // ---------- STEP 3 save workspace ----------
       addStep("Saving workspace...");
 
       const workspaceForm = new FormData();
 
-      workspaceForm.append(
-        "entities",
-        JSON.stringify(graphData.entities)
-      );
+      workspaceForm.append("entities", JSON.stringify(graphData.entities));
 
       workspaceForm.append(
         "relationships",
-        JSON.stringify(graphData.relationships)
+        JSON.stringify(graphData.relationships),
       );
 
-      files.forEach(f => workspaceForm.append("files", f));
+      files.forEach((f) => workspaceForm.append("files", f));
 
       const saveRes = await fetch("/api/workspace", {
         method: "POST",
-        body: workspaceForm
+        body: workspaceForm,
       });
 
       if (!saveRes.ok) {
@@ -164,31 +150,21 @@ export default function HomePage() {
       router.push(`/workspace/${workspaceId}`);
 
       setSuccess("Documents processed successfully");
-
     } catch (e: unknown) {
-
       setError(e instanceof Error ? e.message : "Something failed");
-
     } finally {
-
       setLoading(false);
-
     }
   }
 
-
   // ---------- remove file ----------
   function removeFile(name: string) {
-    setFiles(prev => prev.filter(f => f.name !== name));
+    setFiles((prev) => prev.filter((f) => f.name !== name));
   }
-
-
 
   return (
     <main className="min-h-screen bg-gray-50">
-
       <div className="mx-auto max-w-3xl px-6 py-12">
-
         <h1 className="text-2xl font-semibold text-gray-900">
           Knowledge Graph Builder
         </h1>
@@ -197,10 +173,8 @@ export default function HomePage() {
           Upload documents to extract entities automatically.
         </p>
 
-
         {/* HOW IT WORKS */}
         <div className="mt-8 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-
           <h2 className="font-medium text-gray-900">How it works</h2>
 
           <ol className="mt-4 space-y-2 text-sm text-gray-700 list-decimal list-inside">
@@ -208,14 +182,10 @@ export default function HomePage() {
             <li>System extracts entities & relationships</li>
             <li>View and edit the knowledge graph</li>
           </ol>
-
         </div>
-
-
 
         {/* UPLOAD */}
         <div className="mt-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm text-gray-900">
-
           <h2 className="font-medium text-gray-900">Upload documents</h2>
 
           <p className="mt-1 text-xs text-gray-500">
@@ -226,15 +196,14 @@ export default function HomePage() {
             {files.length}/{MAX_FILES} files selected
           </p>
 
-
           <input
             type="file"
             multiple
             disabled={loading}
             accept=".txt,.pdf,text/plain,application/pdf"
-            onChange={(e)=>{
+            onChange={(e) => {
               validateFiles(e.target.files);
-              e.target.value="";
+              e.target.value = "";
             }}
             className="mt-4 block w-full text-sm
               file:mr-4 file:rounded-md file:border-0
@@ -242,19 +211,15 @@ export default function HomePage() {
               file:text-white hover:file:bg-gray-700"
           />
 
-
           {/* FILE LIST */}
-          {files.length>0 && (
-
+          {files.length > 0 && (
             <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
-
               <div className="font-medium mb-2 text-gray-900">
                 Selected files:
               </div>
 
               <div className="space-y-2">
-
-                {files.map(f=>(
+                {files.map((f) => (
                   <div
                     key={f.name}
                     className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2"
@@ -263,19 +228,16 @@ export default function HomePage() {
 
                     <button
                       disabled={loading}
-                      onClick={()=>removeFile(f.name)}
+                      onClick={() => removeFile(f.name)}
                       className="ml-3 text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
                     >
                       Remove
                     </button>
                   </div>
                 ))}
-
               </div>
-
             </div>
           )}
-
 
           {/* ERROR */}
           {error && (
@@ -284,7 +246,6 @@ export default function HomePage() {
             </div>
           )}
 
-
           {/* SUCCESS */}
           {success && (
             <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
@@ -292,46 +253,35 @@ export default function HomePage() {
             </div>
           )}
 
-
           {/* PROCESSING STEPS */}
-          {steps.length>0 && (
-
+          {steps.length > 0 && (
             <div className="mt-4 rounded-md border border-gray-200 bg-white p-4">
-
-              <div className="text-sm font-medium mb-2">
-                Processing status
-              </div>
+              <div className="text-sm font-medium mb-2">Processing status</div>
 
               <ul className="space-y-1 text-sm text-gray-700">
-                {steps.map((s,i)=>(
+                {steps.map((s, i) => (
                   <li key={i}>• {s}</li>
                 ))}
               </ul>
-
             </div>
           )}
-
 
           {/* DEBUG GRAPH */}
           {graphData && (
             <pre className="mt-6 rounded-md border bg-white p-4 text-xs overflow-auto">
-              {JSON.stringify(graphData,null,2)}
+              {JSON.stringify(graphData, null, 2)}
             </pre>
           )}
 
-
           <button
             onClick={handleUpload}
-            disabled={loading || files.length===0}
+            disabled={loading || files.length === 0}
             className="mt-5 rounded-md bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
           >
             {loading ? "Processing..." : "Upload"}
           </button>
-
         </div>
-
       </div>
-
     </main>
   );
 }
