@@ -11,6 +11,8 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function WorkspaceListPage() {
   // ---------- GET WORKSPACES ----------
   const { data: workspaces } = await supabase
