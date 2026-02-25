@@ -207,7 +207,7 @@ export default function HomePage() {
                   1
                 </span>
                 <span className="pt-0.5">
-                  Upload 3–10 text or PDF documents
+                  Upload 1–10 text or PDF documents
                 </span>
               </li>
               <li className="flex items-start gap-3">
