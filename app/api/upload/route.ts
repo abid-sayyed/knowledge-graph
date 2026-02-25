@@ -1,7 +1,11 @@
+import "pdf-parse/worker";
+
 export const runtime = "nodejs";
+
 
 import { NextResponse } from "next/server";
 import { PDFParse } from "pdf-parse";
+
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
