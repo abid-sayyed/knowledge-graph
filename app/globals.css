@@ -1,26 +1,28 @@
+/* Tailwind */
 @import "tailwindcss";
 
+/* ---------- BASE COLORS ---------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f9fafb;   /* light grey dashboard background */
+  --foreground: #111827;   /* dark neutral text */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Optional dark mode (safe default) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b0b0c;
+    --foreground: #e5e7eb;
   }
 }
+
+/* ---------- BASE BODY ---------- */
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+main {
+  color: #111827;
 }
