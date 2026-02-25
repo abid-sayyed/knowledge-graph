@@ -15,7 +15,8 @@ import type {
 const apiKey = process.env.GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey });
 
-const MODEL = "gemini-3-flash-preview";
+// const MODEL = "gemini-3-flash-preview";
+const MODEL = "gemini-2.5-flash";
 
 // ============================
 // JSON SCHEMA FOR GEMINI
@@ -207,12 +208,16 @@ export async function POST(req: Request) {
           ? err
           : JSON.stringify(err);
 
-    return NextResponse.json(
-      {
-        error: "Extraction failed",
-        apiError: message,
-      },
-      { status: 500 },
-    );
+    const response: Record<string, string> = {
+      error:
+        "Extraction failed. AI request limit reached or service temporarily unavailable. Please try again after some time.",
+    };
+
+    // Only include debug info in development
+    if (process.env.NODE_ENV === "development") {
+      response.apiError = message;
+    }
+
+    return NextResponse.json(response, { status: 500 });
   }
 }
