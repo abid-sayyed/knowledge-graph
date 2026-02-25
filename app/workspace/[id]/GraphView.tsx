@@ -164,6 +164,10 @@ export default function GraphView({ entities, relationships }: Props) {
   const [editType, setEditType] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
+  const [showAddConnection, setShowAddConnection] = useState(false);
+  const [connectionType, setConnectionType] = useState("");
+  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+
   // Update nodes when layout changes
   useEffect(() => {
     setNodes(layoutedNodes);
@@ -183,6 +187,11 @@ export default function GraphView({ entities, relationships }: Props) {
       setEditName(entity.name);
       setEditType(entity.type || "");
       setIsEditing(false);
+
+      // ⭐ RESET CONNECTION FORM HERE
+      setShowAddConnection(false);
+      setConnectionType("");
+      setSelectedTargets([]);
     },
     [localEntities],
   );
@@ -193,6 +202,13 @@ export default function GraphView({ entities, relationships }: Props) {
   const connected = relationships.filter(
     (r) => r.from_entity === selected || r.to_entity === selected,
   );
+
+  const connectedIds = new Set(
+  connected.map((r) =>
+    r.from_entity === selected ? r.to_entity : r.from_entity
+  )
+);
+
 
   // ---------- FOR EDIT NODE ----------
 
@@ -228,6 +244,44 @@ export default function GraphView({ entities, relationships }: Props) {
     );
 
     setIsEditing(false);
+  }
+
+  async function createConnections() {
+    if (!selected) return;
+
+    const payload = selectedTargets.map((target) => ({
+      from_entity: selected,
+      to_entity: target,
+      type: connectionType.trim() || "Untitled",
+    }));
+
+    const res = await fetch("/api/add-connection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const created = await res.json();
+
+    if (created?.data) {
+      setEdges((prev) => [
+        ...prev,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...created.data.map((r: any) => ({
+          id: r.id,
+          source: r.from_entity,
+          target: r.to_entity,
+          label: r.type,
+          type: "smoothstep",
+          animated: true,
+          style: { stroke: "#94a3b8", strokeWidth: 2 },
+        })),
+      ]);
+    }
+
+    setShowAddConnection(false);
+    setConnectionType("");
+    setSelectedTargets([]);
   }
 
   return (
@@ -342,6 +396,67 @@ export default function GraphView({ entities, relationships }: Props) {
               </svg>
             </button>
           </div>
+
+          {showAddConnection && (
+            <div className="mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+              {/* TYPE INPUT */}
+              <div>
+                <div className="text-xs font-medium text-slate-500 mb-1">
+                  Relationship Type
+                </div>
+
+                <input
+                  value={connectionType}
+                  onChange={(e) => setConnectionType(e.target.value)}
+                  placeholder="works_at / owns / knows..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 "
+                />
+              </div>
+
+              {/* MULTI SELECT ENTITIES */}
+              <div>
+                <div className="text-xs font-medium text-slate-500 mb-1">
+                  Select Nodes
+                </div>
+
+                <select
+                  multiple
+                  value={selectedTargets}
+                  onChange={(e) =>
+                    setSelectedTargets(
+                      Array.from(e.target.selectedOptions, (o) => o.value),
+                    )
+                  }
+                  className="w-full border border-slate-300 rounded-lg p-2 text-sm h-32 text-slate-800 "
+                >
+                  {localEntities
+                    .filter((e) => e.id !== selected && !connectedIds.has(e.id))
+                    .map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* ACTION BUTTONS */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={createConnections}
+                  className="flex-1 bg-linear-to-r from-slate-800 to-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                >
+                  Add Connections
+                </button>
+
+                <button
+                  onClick={() => setShowAddConnection(false)}
+                  className="px-4 py-2 rounded-lg text-sm border border-slate-300 text-slate-800 "
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* SIDEBAR CONTENT */}
           <div className="flex-1 overflow-auto p-6">
@@ -481,9 +596,18 @@ export default function GraphView({ entities, relationships }: Props) {
                       d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                     />
                   </svg>
-                  <h4 className="font-semibold text-slate-700">
-                    Connections ({connected.length})
-                  </h4>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-slate-700 pr-4">
+                      Connections ({connected.length})
+                    </h4>
+
+                    <button
+                      onClick={() => setShowAddConnection(true)}
+                      className="text-xs px-3 py-1 bg-slate-800 text-white rounded-md hover:bg-slate-700"
+                    >
+                      + Add Connection
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
